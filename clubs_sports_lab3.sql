@@ -1,19 +1,19 @@
-DROP DATABASE IF EXISTS school_sport_clubs;
-CREATE DATABASE school_sport_clubs;
-USE school_sport_clubs;
+drop database if exists clubs_sports;
+create database clubs_sports;
+use clubs_sports;
 
-CREATE TABLE school_sport_clubs.sports(
+CREATE TABLE clubs_sports.sports(
 	id INT AUTO_INCREMENT PRIMARY KEY ,
 	name VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE school_sport_clubs.coaches(
+CREATE TABLE clubs_sports.coaches(
 	id INT AUTO_INCREMENT PRIMARY KEY ,
 	name VARCHAR(255) NOT NULL ,
 	egn VARCHAR(10) NOT NULL UNIQUE
 );
 
-CREATE TABLE school_sport_clubs.students(
+CREATE TABLE clubs_sports.students(
 	id INT AUTO_INCREMENT PRIMARY KEY ,
 	name VARCHAR(255) NOT NULL ,
 	egn VARCHAR(10) NOT NULL UNIQUE ,
@@ -22,7 +22,7 @@ CREATE TABLE school_sport_clubs.students(
 	class VARCHAR(10) NULL DEFAULT NULL   
 );
 
-CREATE TABLE school_sport_clubs.sportGroups(
+CREATE TABLE clubs_sports.sportGroups(
 	id INT AUTO_INCREMENT PRIMARY KEY ,
 	location VARCHAR(255) NOT NULL ,
 	dayOfWeek ENUM('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday') ,
@@ -36,7 +36,7 @@ CREATE TABLE school_sport_clubs.sportGroups(
 		REFERENCES coaches(id)
 );
 
-CREATE TABLE school_sport_clubs.student_sport(
+CREATE TABLE clubs_sports.student_sport(
 	student_id INT NOT NULL , 
 	sportGroup_id INT NOT NULL ,  
 	CONSTRAINT FOREIGN KEY (student_id) 
@@ -249,9 +249,138 @@ VALUES	(NULL, '1', '1', '200', '1', 2022, now()),
 		(NULL, '4', '2', '200', '1', 2020, now()),
 		(NULL, '4', '2', '200', '2', 2020, now());
         
-        
-        
-        
+SELECT id, name,egn,address,phone,class
+FROM students;
+
+SELECT sportgroups.location,
+sportgroups.dayOfWeek,
+sportgroups.hourOfTraining,
+sportgroups.dayOfWeek,
+sports.name
+FROM sportgroups JOIN sports
+ON sportgroups.sport_id = sports.id;
+
+
+SELECT students.name, students.class, sportgroups.id
+ FROM students JOIN sportgroups
+ ON students.id IN (
+	SELECT student_id
+	FROM student_sport
+	WHERE student_sport.sportGroup_id = sportgroups.id
+ )
+ WHERE sportgroups.id IN(
+	SELECT sportgroup_id
+    FROM student_sport
+    WHERE sportGroup_id IN(
+		SELECT id
+		FROM sportgroups
+		WHERE dayOfWeek = 'Monday'
+		AND hourOfTraining = '08:00:00'
+		AND coach_id IN(
+			SELECT id
+			FROM coaches
+			WHERE name = 'Иван Тодоров Петров'
+		)
+        AND sport_id =(
+			SELECT id
+			FROM sports
+            WHERE name = 'Football'
+		)
+    )
+ );
+ -- zad 1 --
+ 
+ insert into students(name, egn, address, phone, class)
+ values ("Ivan Ivanov Ivanov", "9307186371", "София-Сердика","0888892950", "10");
+ 
+ -- zad 2 --
+ 
+ select *
+ from students
+ order by name;
+ 
+ -- zad3 --
+ 
+ delete from students
+ where egn ='9307186371';
+ 
+ -- zad4 --
+ 
+ select students.name, sports.name
+ from students join sportgroups
+ on students.id in(
+ select student_sport.student_id
+ from student_sport
+ where student_sport.sportGroup_id=sportgroups.id)
+ join sports
+ on sports.id = sportgroups.sport_id;
+ 
+ 
+-- zad 4 variant 2
+
+select students.name, sports.name
+from students join student_sport 
+on students.id=student_sport.student_id
+join sportgroups 
+on student_sport.sportGroup_id=sportgroups.id
+join sports
+on sportgroups.sport_id=sports.id;
+
+-- zad 5
+
+select students.name, students.class, sg.id
+from students join student_sport as sp
+on students.id=sp.student_id
+join sportgroups as sg
+on sp.sportGroup_id=sg.id
+where sg.dayOfWeek = 'Sunday';
+
+-- zad 6 --
+select coaches.name, sports.name as sport
+from coaches join sportgroups
+on coaches.id=sportgroups.coach_id
+join sports
+on sports.id = sportgroups.sport_id
+where sports.name='Football';
+
+-- zad 7--
+select sportgroups.location, sportgroups.hourOfTraining, sportgroups.dayOfWeek
+from sportgroups 
+where sportgroups.sport_id in(
+select sports.id
+from sports
+where sports.name = 'Volleyball');
+
+-- zad 8 --
+select sports.name
+from sports join sportgroups
+on sports.id = sportgroups.sport_id
+join student_sport
+on student_sport.student_id in(
+select students.id
+from students
+where students.name = "Iliyan Ivanov")
+where student_sport.sportGroup_id=sportgroups.id;
+
+
+-- zad 9 --
+select distinct students.name
+from students join student_sport
+on students.id = student_sport.student_id
+join sportgroups
+on student_sport.sportGroup_id = sportgroups.id
+where sportgroups.coach_id in(
+select coaches.id
+from coaches
+where coaches.name = "Ivan Todorov Petkov");
+
+-- zad 10 --
+select students.name, sum(taxespayments.paymentAmount) as pay_year, taxespayments.year
+from taxespayments join students
+on taxespayments.student_id = students.id
+group by year, student_id;
+
+----------------------------------- Drugi zadachi------------------------------------------------------------------------------------------------------
 -- zad 1
 
 select students.name, students.class, students.phone
@@ -303,79 +432,5 @@ group by student_sport.sportGroup_id;
 
 -- zad 6 --
 
-SELECT firstpl.name as firstPlayer, secondpl.name as secondPlayer, sports.name as sportName
-FROM students as firstpl JOIN students as secondpl
-ON firstpl.id > secondpl.id 
-JOIN sports ON (
-		secondpl.id IN(
-		SELECT student_id 
-                FROM student_sport
-		WHERE sportGroup_id IN(
-		SELECT id 
-                FROM sportgroups
-		WHERE sport_id = sports.id
-		) 
-							)	
-AND (firstPl.id IN( SELECT student_id 
-FROM student_sport
-WHERE sportGroup_id IN(
-SELECT id 
-FROM sportgroups WHERE sport_id = sports.id) 
-				)
-    )
-)
-WHERE firstPL.id IN(
-	  SELECT student_id
-	  FROM student_sport
-	  WHERE sportGroup_id IN(
-			SELECT sportGroup_id
-			FROM student_sport
-			WHERE student_id = secondPl.id
-		
-		)
-        
-)
-AND sports.name='Football'
-ORDER BY sportName;
 
--- zad 7 --
-
-select students.name as student_name , students.class, sportgroups.location, coaches.name
-from students join student_sport
-on students.id = student_sport.student_id
-join sportgroups
-on student_sport.sportGroup_id = sportgroups.id
-join coaches
-on sportgroups.coach_id = coaches.id
-where sportgroups.hourOfTraining = '08:00';
-
-drop procedure if exists  CursorTest;
-delimiter |
-create procedure CursorTest()
-begin
-declare finished int;
-declare tempName varchar(100);
-declare tempEgn varchar(10);
-declare coachCursor CURSOR for
-SELECT name, egn
-from coaches
-where month_salary is not null;
-declare continue handler FOR NOT FOUND set finished = 1;
-set finished = 0;
-OPEN coachCursor;
-coach_loop: while( finished = 0)
-DO
-FETCH coachCursor INTO tempName,tempEgn;
-       IF(finished = 1)
-       THEN 
-       LEAVE coach_loop;
-       END IF;	
-       SELECT tempName,tempEgn; # or do something with these variables...
-end while;
-CLOSE coachCursor;
-SET finished = 0;
-SELECT 'Finished!';
-end;
-|
-delimiter |
 
