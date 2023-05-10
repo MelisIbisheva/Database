@@ -25,7 +25,9 @@ CREATE TABLE school_sport_clubs.salarypayments_log(
 	old_salaryAmount double,
 	old_dateOfPayment datetime not null
 );
-drop trigger salarypayments_delete;
+
+
+drop trigger if exists salarypayments_delete;
 
 DELIMITER //
 
@@ -48,7 +50,7 @@ select * from salarypayments_log;
 
 #zad3
 
-delete from salarypayments;
+delete from salarypayments where id >0;
 
 INSERT INTO salarypayments (id, coach_id, `month`, `year`, salaryAmount, dateOfPayment)
 SELECT salary_id, old_coach_id, old_month, old_year, old_salaryAmount, old_dateOfPayment
