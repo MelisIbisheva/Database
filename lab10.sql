@@ -157,7 +157,7 @@ create procedure make_payments(in customerId int, in plan_id int)
                     end if;
                 end loop getRecords;
 		close curDebts;
-                
+		
                 if isThere = false then 
                 insert into debtors(customer_id, plan_id, debt_amount)
                 values(customerId, plan_id, fee);
