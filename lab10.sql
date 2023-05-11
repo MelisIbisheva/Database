@@ -82,7 +82,7 @@ INSERT INTO `debtors` (`customer_id`, `plan_id`, `debt_amount`) VALUES
 #zad1.  Създайте процедура, всеки месец извършва превод от депозираната от клиента 
 #сума, с който се заплаща месечната такса. Нека процедурата получава като 
 #входни параметри id на клиента и сума за превод, ако преводът е успешен -
-#третият изходен параметър от тип BIT да приема стойност 1, в противен случай 0
+#третият изходен параметър от тип BIT да приема стойност 1, в противен случай 0 
 
 drop procedure if exists transfer_money;
 delimiter |
@@ -106,7 +106,8 @@ create procedure transfer_money(in customerId int, in sum double, out result bit
             set result = 1;
 			end if;
     commit;
-end |
+end;
+ |
 delimiter ;
 
 select * from accounts;
@@ -156,15 +157,16 @@ create procedure make_payments(in customerId int, in plan_id int)
                     where currCus = customer_id and currPlan = plan_id;
                     end if;
                 end loop getRecords;
-		close curDebts;
-		
+                close curDebts;
+			
                 if isThere = false then 
                 insert into debtors(customer_id, plan_id, debt_amount)
                 values(customerId, plan_id, fee);
                 end if;
 			end if;
 		commit;
-end |
+end;
+ |
 delimiter ;
 
 call make_payments(1, 1);
@@ -178,10 +180,11 @@ select * from debtors;
 #zad3 Създайте event, който се изпълнява на 28-я ден от всеки месец и извиква 
 #втората процедура.
 
+drop event if exists month_payment;
 delimiter |
 create event month_payment
 on schedule every 1 month
-STARTS CONCAT(DATE_FORMAT(NOW(), '%Y-%m-28'), ' 00:00:00')
+STARTS CONCAT(DATE_FORMAT(NOW(), '%Y-%m-28'), ' 15:00:00')
 DO
 begin
 call make_payments(1, 1);
@@ -274,5 +277,4 @@ end;
 delimiter ;
 
 call custAndPay('John', 'Smith');
-
 
