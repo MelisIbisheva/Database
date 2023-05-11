@@ -86,35 +86,35 @@ INSERT INTO `debtors` (`customer_id`, `plan_id`, `debt_amount`) VALUES
 
 drop procedure if exists transfer_money;
 delimiter |
-create procedure transfer_money(IN clientId int, IN money double, OUT success bit)
-begin
-declare account_balance double;
-declare monthly_fee double;
+create procedure transfer_money(in customerId int, in sum double, out result bit)
+	begin
+		declare curSum double;
+        
+		start transaction;
+		
+			select amount into curSum 
+			from accounts
+			where customer_id = customerId;
+			
+			if curSum < sum then 
+			set result = 0;
+			rollback;
+            else 
+            update accounts
+            set amount = amount - sum
+            where customer_id = customerId;
+            set result = 1;
+			end if;
+    commit;
+end |
+delimiter ;
 
-select amount INTO account_balance 
-from  accounts where customer_id = clientId;
+select * from accounts;
 
-select monthly_fee INTO monthly_fee from plans
-join payments 
-on plans.planID = payments.plan_id
-where payments.customer_id = clientId
-and payments.month = MONTH(NOW())
-and payments.year = YEAR(NOW());
+call transfer_money(1, 29.99, @res);
+select @res;
 
-
-if account_balance>=monthly_fee then
-UPDATE accounts SET amount = amount - monthly_fee WHERE customer_id = clientId;
-        SET success = 1;
-    ELSE
-        SET success = 0;
-    end IF;
- end;
- |
- delimiter ;
-
-SET @success = 0;
-CALL transfer_money(1, 29.99, @success);
-SELECT @success;
+select * from accounts;
 
 
 
@@ -127,60 +127,51 @@ SELECT @success;
 
 drop procedure if exists make_payments;
 delimiter |
-create procedure make_payments()
-begin
-declare finished int;
-declare customer_id int;
-declare depositAmount double;
-declare current_balance double;
-declare monthly_fee double;
-declare planId int;
-declare amountDebt double;
-declare success int default 1;
-declare cur cursor for select customerID, amount
-from accounts join customers 
-on accounts.customer_id = customers.customerID;
-declare continue handler for not found set finished =1;
-START transaction;
-open cur;
-read_loop:
-begin
-fetch cur into customer_id, depositAmount;
-if finished = 1 then
-leave read_loop;
-else
-select amount into current_balance from accounts where accounts.customer_id = customer_id;
-
-select monthly_fee INTO monthly_fee from plans
-join payments 
-on plans.planID = payments.plan_id
-where payments.customer_id = customer_id
-and payments.month = MONTH(NOW())
-and payments.year = YEAR(NOW());
-
-select plan_id into planId from payments where customer_id = customer_id;
-if current_balance >= monthly_fee then
-update accounts set amount = amount - monthly_fee where customer_id = customer_id;
-set success = 1;
-else
-set success =0;
-set amountDebt = monthly_fee - current_balance;
-insert into debtors(customer_id, plan_id, debt_amount)
-values(customer_id, planId, amountDebt);
-end if;
-end if;
-end read_loop;
-close cur;
-if success =1 then
-commit;
-else
-rollback;
-end if;
-end;
-|
+create procedure make_payments(in customerId int, in plan_id int)
+	begin
+		declare fee double;
+        declare isThere bool default false;
+		declare finished int;
+        declare currCus, currPlan int;
+        declare curDebts cursor for select customer_id, plan_id from debtors;
+        declare continue handler for not found set finished = 1;
+        set finished = 0;
+		start transaction;
+        
+			select monthly_fee into fee from plans where planID = plan_id;
+			
+			if (select amount from accounts where customer_id = customerId) >= fee then
+            update accounts
+            set amount = amount - fee
+            where customer_id = customerId;
+            else
+				open curDebts;
+				getRecords: loop
+					fetch curDebts into currCus, CurrPlan;
+                    if finished = 1 then leave getRecords;
+                    end if;
+                    if currCus = customerId and currPlan = plan_id then set isThere = true;
+                    update debtors
+                    set debt_amount = debt_amount + fee
+                    where currCus = customer_id and currPlan = plan_id;
+                    end if;
+                end loop getRecords;
+                
+                if isThere = false then 
+                insert into debtors(customer_id, plan_id, debt_amount)
+                values(customerId, plan_id, fee);
+                end if;
+			end if;
+		commit;
+end |
 delimiter ;
 
-call make_payments();
+call make_payments(1, 1);
+call make_payments(2, 2);
+select * from customers;
+select * from accounts;
+select * from plans;
+select * from debtors;
 
 
 #zad3 Създайте event, който се изпълнява на 28-я ден от всеки месец и извиква 
@@ -192,7 +183,7 @@ on schedule every 1 month
 STARTS CONCAT(DATE_FORMAT(NOW(), '%Y-%m-28'), ' 00:00:00')
 DO
 begin
-call make_payments;
+call make_payments(1, 1);
 end;
 |
 delimiter ;
